@@ -272,6 +272,16 @@ label {
   font-style: italic;
 }
 
+.frist-hinweis {
+  margin: 8px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.knopf-umwandeln {
+  margin-top: 8px;
+}
+
 /* VERWALTEN: Listen */
 .verwaltungsliste,
 .fristenliste {

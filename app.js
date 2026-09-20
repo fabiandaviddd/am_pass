@@ -4,6 +4,7 @@
    AM PASS
    Schritt 1: Datenmodell, IndexedDB, Personen, Erfassung
    Schritt 2: Faden und Gesprächsvorbereitung
+   Schritt 3: Fristen, automatische Löschung, Vorwarnung
    ========================================================= */
 
 /* ---------- Konstanten ---------- */
@@ -80,6 +81,18 @@ function formatDatumKurz(iso) {
   const teile = typeof iso === 'string' ? iso.split('-') : [];
   if (teile.length !== 3) return iso || '';
   return teile[2] + '.' + teile[1] + '.';
+}
+
+/* Ganze Tage von vonIso bis bisIso; null bei ungültigen Daten. */
+function tageZwischen(vonIso, bisIso) {
+  if (typeof vonIso !== 'string' || typeof bisIso !== 'string') return null;
+  const von = vonIso.split('-').map(Number);
+  const bis = bisIso.split('-').map(Number);
+  if (von.length !== 3 || bis.length !== 3) return null;
+  const vonDatum = new Date(von[0], von[1] - 1, von[2], 12, 0, 0);
+  const bisDatum = new Date(bis[0], bis[1] - 1, bis[2], 12, 0, 0);
+  if (Number.isNaN(vonDatum.getTime()) || Number.isNaN(bisDatum.getTime())) return null;
+  return Math.round((bisDatum.getTime() - vonDatum.getTime()) / 86400000);
 }
 
 let meldungTimer = null;
@@ -196,6 +209,51 @@ function ladeEintraegeFuerPerson(personId) {
   return inStore('eintraege', 'readonly', function (store) {
     return store.index('personId').getAll(personId);
   });
+}
+
+/* ---------- Fristen und automatische Löschung ---------- */
+
+/* Löscht beim Start jeden Eintrag endgültig, dessen loeschAm in der
+   Vergangenheit liegt. Einträge ohne gültiges loeschAm werden nicht
+   angerührt – lieber stehen lassen als ohne Grundlage löschen. */
+async function loescheAbgelaufeneEintraege() {
+  const heute = heuteIso();
+  const alle = await inStore('eintraege', 'readonly', function (store) { return store.getAll(); });
+  const abgelaufen = alle.filter(function (eintrag) {
+    return typeof eintrag.loeschAm === 'string' && eintrag.loeschAm.length === 10 && eintrag.loeschAm < heute;
+  });
+  if (abgelaufen.length === 0) return 0;
+  await inStore('eintraege', 'readwrite', function (store) {
+    abgelaufen.forEach(function (eintrag) { store.delete(eintrag.id); });
+    return null;
+  });
+  return abgelaufen.length;
+}
+
+/* Kategorie → vereinbarung; loeschAm wird sofort aus dem Eintragsdatum
+   und der Vereinbarungsfrist neu berechnet. Der Text bleibt unverändert. */
+async function wandleInVereinbarungUm(eintragId) {
+  try {
+    const eintrag = await inStore('eintraege', 'readonly', function (store) { return store.get(eintragId); });
+    if (!eintrag) {
+      zeigeMeldung('Der Eintrag wurde nicht gefunden.', 'fehler');
+      return;
+    }
+    const fristen = await ladeFristen();
+    const neuesLoeschAm = isoPlusTage(eintrag.datum, fristen.vereinbarung);
+    if (!neuesLoeschAm) {
+      zeigeMeldung('Die neue Frist konnte nicht berechnet werden – der Eintrag wurde nicht geändert.', 'fehler');
+      return;
+    }
+    eintrag.kategorie = 'vereinbarung';
+    eintrag.loeschAm = neuesLoeschAm;
+    await inStore('eintraege', 'readwrite', function (store) { return store.put(eintrag); });
+    zeigeMeldung('In Vereinbarung umgewandelt – Frist neu bis ' + formatDatum(neuesLoeschAm) + '.');
+  } catch (fehler) {
+    zeigeMeldung(dbFehlerText(fehler), 'fehler');
+    return;
+  }
+  renderFaden();
 }
 
 /* ---------- Navigation ---------- */
@@ -454,6 +512,8 @@ async function renderFaden() {
   liste.textContent = '';
   leerHinweis.hidden = eintraege.length > 0;
 
+  const heute = heuteIso();
+
   eintraege.forEach(function (eintrag) {
     const zeile = document.createElement('li');
 
@@ -468,6 +528,26 @@ async function renderFaden() {
 
     zeile.appendChild(meta);
     zeile.appendChild(text);
+
+    const restTage = tageZwischen(heute, eintrag.loeschAm);
+    if (restTage !== null && restTage < 7) {
+      const frist = document.createElement('p');
+      frist.className = 'frist-hinweis';
+      frist.textContent = 'Frist läuft am ' + formatDatumKurz(eintrag.loeschAm) + ' ab.';
+      zeile.appendChild(frist);
+
+      if (eintrag.kategorie !== 'vereinbarung') {
+        const umwandeln = document.createElement('button');
+        umwandeln.type = 'button';
+        umwandeln.className = 'knopf-umwandeln';
+        umwandeln.textContent = 'In Vereinbarung umwandeln';
+        umwandeln.addEventListener('click', function () {
+          wandleInVereinbarungUm(eintrag.id);
+        });
+        zeile.appendChild(umwandeln);
+      }
+    }
+
     liste.appendChild(zeile);
   });
 }
@@ -734,8 +814,28 @@ async function start() {
       ' Ohne sie kann AM PASS nichts speichern.', 'fehler');
     return;
   }
+
+  /* Erst aufräumen, dann anzeigen – abgelaufene Einträge
+     dürfen nirgends mehr erscheinen. */
+  let geloescht = 0;
+  let aufraeumFehler = null;
+  try {
+    geloescht = await loescheAbgelaufeneEintraege();
+  } catch (fehler) {
+    aufraeumFehler = fehler;
+  }
+
   verdrahteOberflaeche();
   zeigeScreen('erfassen');
+
+  if (aufraeumFehler) {
+    zeigeMeldung('Abgelaufene Einträge konnten nicht bereinigt werden: ' +
+      (aufraeumFehler.message || 'unbekannter Fehler'), 'fehler');
+  } else if (geloescht > 0) {
+    zeigeMeldung(geloescht === 1
+      ? '1 Eintrag mit abgelaufener Frist wurde endgültig gelöscht.'
+      : geloescht + ' Einträge mit abgelaufener Frist wurden endgültig gelöscht.');
+  }
 }
 
 document.addEventListener('DOMContentLoaded', start);
