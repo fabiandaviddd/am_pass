@@ -66,7 +66,36 @@
     <!-- ============ FADEN ============ -->
     <section id="screen-faden" class="screen" aria-labelledby="titel-faden" hidden>
       <h2 id="titel-faden">Faden</h2>
-      <p class="hinweis">Der Faden folgt in Schritt 2.</p>
+
+      <div id="faden-personenwahl">
+        <p class="hinweis" id="faden-keine-personen" hidden>
+          Noch keine Personen angelegt. Lege unter VERWALTEN zuerst eine Person an.
+        </p>
+        <div id="faden-personen-kacheln" class="kachel-raster"></div>
+      </div>
+
+      <div id="faden-ansicht" hidden>
+        <div class="form-kopf">
+          <button type="button" id="faden-zurueck" class="knopf-schlicht">‹ Personen</button>
+          <span id="faden-person" class="gewaehlte-person"></span>
+        </div>
+
+        <p id="gespraechszeile" class="gespraechszeile"></p>
+
+        <button type="button" id="knopf-gespraechsvorbereitung" class="knopf-breit">Gesprächsvorbereitung</button>
+
+        <div id="vorbereitung" hidden>
+          <label for="vorbereitung-text" class="sichtbar-versteckt">Gesprächsvorbereitung als Text</label>
+          <textarea id="vorbereitung-text" readonly rows="12"></textarea>
+          <div class="knopfzeile">
+            <button type="button" id="vorbereitung-kopieren">Text kopieren</button>
+            <button type="button" id="vorbereitung-schliessen">Schließen</button>
+          </div>
+        </div>
+
+        <p class="hinweis" id="faden-leer" hidden>Noch keine Einträge für diese Person.</p>
+        <ul id="faden-liste" class="fadenliste"></ul>
+      </div>
     </section>
 
     <!-- ============ VERWALTEN ============ -->

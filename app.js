@@ -1,8 +1,9 @@
 'use strict';
 
 /* =========================================================
-   AM PASS – Schritt 1
-   Datenmodell, IndexedDB, Personenverwaltung, Erfassungsmaske
+   AM PASS
+   Schritt 1: Datenmodell, IndexedDB, Personen, Erfassung
+   Schritt 2: Faden und Gesprächsvorbereitung
    ========================================================= */
 
 /* ---------- Konstanten ---------- */
@@ -65,6 +66,20 @@ function isoPlusTage(iso, tage) {
   const monat = String(datum.getMonth() + 1).padStart(2, '0');
   const tag = String(datum.getDate()).padStart(2, '0');
   return datum.getFullYear() + '-' + monat + '-' + tag;
+}
+
+/* JJJJ-MM-TT → TT.MM.JJJJ */
+function formatDatum(iso) {
+  const teile = typeof iso === 'string' ? iso.split('-') : [];
+  if (teile.length !== 3) return iso || '';
+  return teile[2] + '.' + teile[1] + '.' + teile[0];
+}
+
+/* JJJJ-MM-TT → TT.MM. */
+function formatDatumKurz(iso) {
+  const teile = typeof iso === 'string' ? iso.split('-') : [];
+  if (teile.length !== 3) return iso || '';
+  return teile[2] + '.' + teile[1] + '.';
 }
 
 let meldungTimer = null;
@@ -177,6 +192,12 @@ function ladePersonen() {
   return inStore('personen', 'readonly', function (store) { return store.getAll(); });
 }
 
+function ladeEintraegeFuerPerson(personId) {
+  return inStore('eintraege', 'readonly', function (store) {
+    return store.index('personId').getAll(personId);
+  });
+}
+
 /* ---------- Navigation ---------- */
 
 function zeigeScreen(name) {
@@ -193,6 +214,10 @@ function zeigeScreen(name) {
   if (name === 'erfassen') {
     zeigePersonenwahl();
     renderPersonenKacheln();
+  }
+  if (name === 'faden') {
+    zeigeFadenPersonenwahl();
+    renderFadenPersonen();
   }
   if (name === 'verwalten') {
     renderVerwalten();
@@ -315,7 +340,9 @@ async function speichereEintrag() {
     kategorie: auswahl.kategorie,
     quelle: auswahl.quelle,
     text: text,
-    loeschAm: loeschAm
+    loeschAm: loeschAm,
+    /* Nur für stabile Sortierung mehrerer Einträge am selben Tag. */
+    erstelltAm: new Date().toISOString()
   };
 
   try {
@@ -328,6 +355,175 @@ async function speichereEintrag() {
   zeigeMeldung('Gespeichert für ' + auswahl.personName + ' (' + KATEGORIE_NAMEN[eintrag.kategorie] + ').');
   zeigePersonenwahl();
   renderPersonenKacheln();
+}
+
+/* ---------- FADEN ---------- */
+
+const faden = { personId: null, personName: '' };
+
+function zeigeFadenPersonenwahl() {
+  document.getElementById('faden-personenwahl').hidden = false;
+  document.getElementById('faden-ansicht').hidden = true;
+}
+
+/* Im Faden erscheinen alle Personen, auch deaktivierte –
+   ihre Einträge bleiben sonst unerreichbar. */
+async function renderFadenPersonen() {
+  const raster = document.getElementById('faden-personen-kacheln');
+  const leerHinweis = document.getElementById('faden-keine-personen');
+  let personen = [];
+  try {
+    personen = await ladePersonen();
+  } catch (fehler) {
+    zeigeMeldung(dbFehlerText(fehler), 'fehler');
+    return;
+  }
+  personen.sort(function (a, b) { return a.anzeigename.localeCompare(b.anzeigename, 'de'); });
+
+  raster.textContent = '';
+  leerHinweis.hidden = personen.length > 0;
+
+  personen.forEach(function (person) {
+    const kachel = document.createElement('button');
+    kachel.type = 'button';
+
+    const name = document.createElement('span');
+    name.className = 'kachel-name';
+    name.textContent = person.anzeigename;
+
+    const rolle = document.createElement('span');
+    rolle.className = 'kachel-rolle';
+    rolle.textContent = person.rolle;
+
+    kachel.appendChild(name);
+    kachel.appendChild(rolle);
+
+    if (!person.aktiv) {
+      const status = document.createElement('span');
+      status.className = 'kachel-inaktiv';
+      status.textContent = 'deaktiviert';
+      kachel.appendChild(status);
+    }
+
+    kachel.addEventListener('click', function () {
+      oeffneFaden(person);
+    });
+    raster.appendChild(kachel);
+  });
+}
+
+function sortiereNeuesteZuerst(a, b) {
+  if (a.datum !== b.datum) return a.datum < b.datum ? 1 : -1;
+  const ea = a.erstelltAm || '';
+  const eb = b.erstelltAm || '';
+  if (ea === eb) return 0;
+  return ea < eb ? 1 : -1;
+}
+
+function oeffneFaden(person) {
+  faden.personId = person.id;
+  faden.personName = person.anzeigename;
+  document.getElementById('faden-person').textContent = person.anzeigename;
+  document.getElementById('faden-personenwahl').hidden = true;
+  document.getElementById('faden-ansicht').hidden = false;
+  document.getElementById('vorbereitung').hidden = true;
+  renderFaden();
+}
+
+async function renderFaden() {
+  const liste = document.getElementById('faden-liste');
+  const leerHinweis = document.getElementById('faden-leer');
+  const gespraechszeile = document.getElementById('gespraechszeile');
+
+  let eintraege = [];
+  try {
+    eintraege = await ladeEintraegeFuerPerson(faden.personId);
+  } catch (fehler) {
+    zeigeMeldung(dbFehlerText(fehler), 'fehler');
+    return;
+  }
+  eintraege.sort(sortiereNeuesteZuerst);
+
+  const gespraeche = eintraege.filter(function (eintrag) { return eintrag.kategorie === 'gespraech'; });
+  if (gespraeche.length > 0) {
+    gespraechszeile.textContent = 'Letztes Gespräch: ' + formatDatumKurz(gespraeche[0].datum);
+  } else {
+    gespraechszeile.textContent = 'Noch kein Gespräch erfasst';
+  }
+
+  liste.textContent = '';
+  leerHinweis.hidden = eintraege.length > 0;
+
+  eintraege.forEach(function (eintrag) {
+    const zeile = document.createElement('li');
+
+    const meta = document.createElement('p');
+    meta.className = 'eintrag-meta';
+    meta.textContent = formatDatum(eintrag.datum) + ' · ' +
+      (KATEGORIE_NAMEN[eintrag.kategorie] || eintrag.kategorie) + ' · ' + eintrag.quelle;
+
+    const text = document.createElement('p');
+    text.className = 'eintrag-text';
+    text.textContent = eintrag.text;
+
+    zeile.appendChild(meta);
+    zeile.appendChild(text);
+    liste.appendChild(zeile);
+  });
+}
+
+/* Schlichter, vorzeigbarer Text: nur Datum, Kategorie, Quelle und Wortlaut. */
+function baueVorbereitungsText(eintraege) {
+  const kopf = 'Gesprächsvorbereitung – ' + faden.personName + '\n' +
+    'Stand: ' + formatDatum(heuteIso());
+  if (eintraege.length === 0) {
+    return kopf + '\n\nNoch keine Einträge vorhanden.';
+  }
+  const chronologisch = eintraege.slice().sort(function (a, b) {
+    return sortiereNeuesteZuerst(b, a);
+  });
+  const bloecke = chronologisch.map(function (eintrag) {
+    return formatDatum(eintrag.datum) + ' – ' +
+      (KATEGORIE_NAMEN[eintrag.kategorie] || eintrag.kategorie) + ' (' + eintrag.quelle + ')\n' +
+      eintrag.text;
+  });
+  return kopf + '\n\n' + bloecke.join('\n\n');
+}
+
+async function zeigeVorbereitung() {
+  let eintraege = [];
+  try {
+    eintraege = await ladeEintraegeFuerPerson(faden.personId);
+  } catch (fehler) {
+    zeigeMeldung(dbFehlerText(fehler), 'fehler');
+    return;
+  }
+  const feld = document.getElementById('vorbereitung-text');
+  feld.value = baueVorbereitungsText(eintraege);
+  document.getElementById('vorbereitung').hidden = false;
+  feld.scrollTop = 0;
+}
+
+async function kopiereVorbereitung() {
+  const feld = document.getElementById('vorbereitung-text');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(feld.value);
+      zeigeMeldung('Text kopiert.');
+      return;
+    } catch (fehler) {
+      /* weiter mit der Auswahl-Variante */
+    }
+  }
+  feld.focus();
+  feld.setSelectionRange(0, feld.value.length);
+  let kopiert = false;
+  try {
+    kopiert = document.execCommand('copy');
+  } catch (fehler) {
+    kopiert = false;
+  }
+  zeigeMeldung(kopiert ? 'Text kopiert.' : 'Der Text ist markiert – bitte mit „Kopieren“ übernehmen.');
 }
 
 /* ---------- VERWALTEN ---------- */
@@ -484,6 +680,22 @@ function verdrahteOberflaeche() {
 
   document.getElementById('zurueck-zur-personenwahl').addEventListener('click', function () {
     zeigePersonenwahl();
+  });
+
+  document.getElementById('faden-zurueck').addEventListener('click', function () {
+    zeigeFadenPersonenwahl();
+  });
+
+  document.getElementById('knopf-gespraechsvorbereitung').addEventListener('click', function () {
+    zeigeVorbereitung();
+  });
+
+  document.getElementById('vorbereitung-kopieren').addEventListener('click', function () {
+    kopiereVorbereitung();
+  });
+
+  document.getElementById('vorbereitung-schliessen').addEventListener('click', function () {
+    document.getElementById('vorbereitung').hidden = true;
   });
 
   document.querySelectorAll('#kategorie-wahl button').forEach(function (knopf) {

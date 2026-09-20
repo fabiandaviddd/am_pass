@@ -222,6 +222,56 @@ label {
   font-weight: 600;
 }
 
+/* FADEN */
+.gespraechszeile {
+  font-weight: 600;
+  margin: 0 0 14px;
+}
+
+.knopf-breit {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+#vorbereitung { margin-bottom: 16px; }
+#vorbereitung-text {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.knopfzeile {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+.knopfzeile button { flex: 1; }
+
+.fadenliste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.fadenliste li {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--linie);
+}
+.eintrag-meta {
+  font-size: 15px;
+  color: var(--tinte-leise);
+  margin: 0 0 4px;
+}
+.eintrag-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.kachel-inaktiv {
+  font-size: 15px;
+  color: var(--tinte-leise);
+  font-style: italic;
+}
+
 /* VERWALTEN: Listen */
 .verwaltungsliste,
 .fristenliste {
