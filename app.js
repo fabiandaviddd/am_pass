@@ -5,6 +5,7 @@
    Schritt 1: Datenmodell, IndexedDB, Personen, Erfassung
    Schritt 2: Faden und Gesprächsvorbereitung
    Schritt 3: Fristen, automatische Löschung, Vorwarnung
+   Schritt 4: Export je Person und „Alles löschen“
    ========================================================= */
 
 /* ---------- Konstanten ---------- */
@@ -651,15 +652,28 @@ async function renderPersonenListe() {
       angaben.appendChild(status);
     }
 
-    const knopf = document.createElement('button');
-    knopf.type = 'button';
-    knopf.textContent = person.aktiv ? 'Deaktivieren' : 'Aktivieren';
-    knopf.addEventListener('click', function () {
+    const knoepfe = document.createElement('div');
+    knoepfe.className = 'person-knoepfe';
+
+    const exportKnopf = document.createElement('button');
+    exportKnopf.type = 'button';
+    exportKnopf.textContent = 'Export';
+    exportKnopf.addEventListener('click', function () {
+      exportierePerson(person);
+    });
+
+    const aktivKnopf = document.createElement('button');
+    aktivKnopf.type = 'button';
+    aktivKnopf.textContent = person.aktiv ? 'Deaktivieren' : 'Aktivieren';
+    aktivKnopf.addEventListener('click', function () {
       schaltePersonAktiv(person.id);
     });
 
+    knoepfe.appendChild(exportKnopf);
+    knoepfe.appendChild(aktivKnopf);
+
     zeile.appendChild(angaben);
-    zeile.appendChild(knopf);
+    zeile.appendChild(knoepfe);
     liste.appendChild(zeile);
   });
 }
@@ -721,6 +735,110 @@ async function legePersonAn() {
   rolleFeld.value = '';
   zeigeMeldung(person.anzeigename + ' wurde angelegt.');
   renderPersonenListe();
+}
+
+/* ---------- Export je Person ---------- */
+
+/* Dateiname ohne vollen Namen: nur Anzeigename (Kürzel) + Datum. */
+function dateinameFuerExport(anzeigename) {
+  const einfach = String(anzeigename).toLowerCase()
+    .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return 'am-pass-' + (einfach || 'person') + '-' + heuteIso() + '.txt';
+}
+
+/* Lesbarer, vorzeigbarer Text: älteste Einträge zuerst, deutsche
+   Bezeichnungen, keine IDs, keine Löschfristen, keine Technik. */
+function baueExportText(person, eintraege) {
+  const kopf = 'AM PASS – Einträge für ' + person.anzeigename + ' (' + person.rolle + ')\n' +
+    'Stand: ' + formatDatum(heuteIso());
+  if (eintraege.length === 0) {
+    return kopf + '\n\nNoch keine Einträge vorhanden.\n';
+  }
+  const chronologisch = eintraege.slice().sort(function (a, b) {
+    return sortiereNeuesteZuerst(b, a);
+  });
+  const bloecke = chronologisch.map(function (eintrag) {
+    return formatDatum(eintrag.datum) + ' – ' +
+      (KATEGORIE_NAMEN[eintrag.kategorie] || eintrag.kategorie) + ' (' + eintrag.quelle + ')\n' +
+      eintrag.text;
+  });
+  return kopf + '\n\n' + bloecke.join('\n\n') + '\n';
+}
+
+async function exportierePerson(person) {
+  let eintraege = [];
+  try {
+    eintraege = await ladeEintraegeFuerPerson(person.id);
+  } catch (fehler) {
+    zeigeMeldung(dbFehlerText(fehler), 'fehler');
+    return;
+  }
+  const text = baueExportText(person, eintraege);
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const verweis = document.createElement('a');
+  verweis.href = url;
+  verweis.download = dateinameFuerExport(person.anzeigename);
+  document.body.appendChild(verweis);
+  verweis.click();
+  verweis.remove();
+  setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+  zeigeMeldung('Export für ' + person.anzeigename + ' erstellt (' +
+    eintraege.length + (eintraege.length === 1 ? ' Eintrag' : ' Einträge') + ').');
+}
+
+/* ---------- Alles löschen ---------- */
+
+function leereAlleDaten() {
+  return new Promise(function (aufloesen, ablehnen) {
+    if (!db) {
+      ablehnen(new Error('Keine Datenbankverbindung.'));
+      return;
+    }
+    let transaktion;
+    try {
+      transaktion = db.transaction(['personen', 'eintraege', 'einstellungen'], 'readwrite');
+    } catch (fehler) {
+      ablehnen(fehler);
+      return;
+    }
+    transaktion.objectStore('personen').clear();
+    transaktion.objectStore('eintraege').clear();
+    transaktion.objectStore('einstellungen').clear();
+    transaktion.oncomplete = function () { aufloesen(); };
+    transaktion.onerror = function () { ablehnen(transaktion.error || new Error('Datenbankfehler.')); };
+    transaktion.onabort = function () { ablehnen(transaktion.error || new Error('Datenbankvorgang abgebrochen.')); };
+  });
+}
+
+function zeigeLoeschBestaetigung(anzeigen) {
+  const bereich = document.getElementById('loeschen-bestaetigung');
+  const eingabe = document.getElementById('loeschen-eingabe');
+  bereich.hidden = !anzeigen;
+  eingabe.value = '';
+  if (anzeigen) eingabe.focus();
+}
+
+async function loescheAlles() {
+  const eingabe = document.getElementById('loeschen-eingabe');
+  const wort = eingabe.value.trim().toUpperCase();
+  if (wort !== 'LÖSCHEN' && wort !== 'LOESCHEN') {
+    zeigeMeldung('Zur Bestätigung bitte LÖSCHEN eintippen.', 'fehler');
+    eingabe.focus();
+    return;
+  }
+  try {
+    await leereAlleDaten();
+    await stelleEinstellungenSicher();
+  } catch (fehler) {
+    zeigeMeldung(dbFehlerText(fehler), 'fehler');
+    return;
+  }
+  zeigeLoeschBestaetigung(false);
+  zeigeMeldung('Alle Daten wurden endgültig gelöscht.');
+  renderVerwalten();
 }
 
 async function renderFristen() {
@@ -801,6 +919,18 @@ function verdrahteOberflaeche() {
   document.getElementById('person-form').addEventListener('submit', function (ereignis) {
     ereignis.preventDefault();
     legePersonAn();
+  });
+
+  document.getElementById('knopf-alles-loeschen').addEventListener('click', function () {
+    zeigeLoeschBestaetigung(true);
+  });
+
+  document.getElementById('loeschen-abbrechen').addEventListener('click', function () {
+    zeigeLoeschBestaetigung(false);
+  });
+
+  document.getElementById('loeschen-endgueltig').addEventListener('click', function () {
+    loescheAlles();
   });
 }
 

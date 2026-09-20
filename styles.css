@@ -317,6 +317,30 @@ label {
 }
 .fristenliste .frist-wert { color: var(--tinte-leise); }
 
+.person-knoepfe {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Alles löschen */
+.knopf-gefahr {
+  border-color: var(--fehler);
+  color: var(--fehler);
+  font-weight: 600;
+}
+
+#loeschen-bestaetigung {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--fehler);
+  border-radius: 10px;
+  background: var(--flaeche);
+}
+#loeschen-bestaetigung p { margin-top: 0; }
+#loeschen-bestaetigung label { margin-top: 10px; }
+
 /* Navigation unten */
 .haupt-nav {
   position: fixed;

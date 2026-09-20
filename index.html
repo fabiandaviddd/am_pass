@@ -123,7 +123,20 @@
       <h3>Fristen</h3>
       <ul id="fristen-liste" class="fristenliste"></ul>
 
-      <p class="hinweis">Export je Person und „Alles löschen“ folgen in Schritt 4.</p>
+      <h3>Alles löschen</h3>
+      <p class="hinweis">Entfernt alle Personen und Einträge endgültig von diesem Gerät.</p>
+      <button type="button" id="knopf-alles-loeschen" class="knopf-gefahr">Alles löschen</button>
+
+      <div id="loeschen-bestaetigung" hidden>
+        <p>Wirklich <strong>alle</strong> Personen und Einträge endgültig löschen?
+          Das kann nicht rückgängig gemacht werden.</p>
+        <label for="loeschen-eingabe">Zur Bestätigung LÖSCHEN eintippen</label>
+        <input id="loeschen-eingabe" type="text" autocomplete="off" autocapitalize="characters">
+        <div class="knopfzeile">
+          <button type="button" id="loeschen-endgueltig" class="knopf-gefahr">Endgültig löschen</button>
+          <button type="button" id="loeschen-abbrechen">Abbrechen</button>
+        </div>
+      </div>
     </section>
   </main>
 
