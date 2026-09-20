@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="AM PASS">
+  <meta name="theme-color" content="#faf9f7">
+  <title>AM PASS</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-kopf">
+    <h1>AM&nbsp;PASS</h1>
+  </header>
+
+  <div id="meldung" class="meldung" role="status" aria-live="polite" hidden></div>
+
+  <main>
+    <!-- ============ ERFASSEN ============ -->
+    <section id="screen-erfassen" class="screen" aria-labelledby="titel-erfassen">
+      <h2 id="titel-erfassen" class="sichtbar-versteckt">Erfassen</h2>
+
+      <div id="personenwahl">
+        <p class="hinweis" id="keine-personen" hidden>
+          Noch keine aktiven Personen vorhanden. Lege unter VERWALTEN zuerst eine Person an.
+        </p>
+        <div id="personen-kacheln" class="kachel-raster"></div>
+      </div>
+
+      <form id="eintrag-form" hidden novalidate>
+        <div class="form-kopf">
+          <button type="button" id="zurueck-zur-personenwahl" class="knopf-schlicht">‹ Personen</button>
+          <span id="gewaehlte-person" class="gewaehlte-person"></span>
+        </div>
+
+        <fieldset class="feldgruppe">
+          <legend>Kategorie</legend>
+          <div id="kategorie-wahl" class="kategorie-raster">
+            <button type="button" data-kategorie="beobachtung" aria-pressed="false">Beobachtung</button>
+            <button type="button" data-kategorie="gespraech" aria-pressed="false">Gespräch</button>
+            <button type="button" data-kategorie="vereinbarung" aria-pressed="false">Vereinbarung</button>
+            <button type="button" data-kategorie="lob" aria-pressed="false">Lob</button>
+          </div>
+        </fieldset>
+
+        <fieldset class="feldgruppe">
+          <legend>Quelle</legend>
+          <div id="quelle-wahl" class="umschalter">
+            <button type="button" data-quelle="selbst gesehen" aria-pressed="true">selbst gesehen</button>
+            <button type="button" data-quelle="von Dritten berichtet" aria-pressed="false">von Dritten berichtet</button>
+          </div>
+        </fieldset>
+
+        <div class="feldgruppe">
+          <label for="eintrag-text">Was war konkret zu sehen?</label>
+          <textarea id="eintrag-text" rows="4"
+            placeholder="Am 12.10. Station 3 allein übernommen, zwei Gänge sauber ausgeführt."></textarea>
+        </div>
+
+        <button type="submit" class="knopf-primaer">Speichern</button>
+      </form>
+    </section>
+
+    <!-- ============ FADEN ============ -->
+    <section id="screen-faden" class="screen" aria-labelledby="titel-faden" hidden>
+      <h2 id="titel-faden">Faden</h2>
+      <p class="hinweis">Der Faden folgt in Schritt 2.</p>
+    </section>
+
+    <!-- ============ VERWALTEN ============ -->
+    <section id="screen-verwalten" class="screen" aria-labelledby="titel-verwalten" hidden>
+      <h2 id="titel-verwalten">Verwalten</h2>
+
+      <h3>Person anlegen</h3>
+      <form id="person-form" novalidate>
+        <div class="feldgruppe">
+          <label for="person-name">Vorname oder Kürzel</label>
+          <input id="person-name" type="text" maxlength="20" autocomplete="off" autocapitalize="words">
+        </div>
+        <div class="feldgruppe">
+          <label for="person-rolle">Rolle</label>
+          <input id="person-rolle" type="text" maxlength="30" autocomplete="off"
+            placeholder="z. B. Service, Bar">
+        </div>
+        <button type="submit" class="knopf-primaer">Person anlegen</button>
+      </form>
+
+      <h3>Personen</h3>
+      <p class="hinweis" id="keine-personen-verwalten" hidden>Noch keine Personen angelegt.</p>
+      <ul id="personen-liste" class="verwaltungsliste"></ul>
+
+      <h3>Fristen</h3>
+      <ul id="fristen-liste" class="fristenliste"></ul>
+
+      <p class="hinweis">Export je Person und „Alles löschen“ folgen in Schritt 4.</p>
+    </section>
+  </main>
+
+  <nav class="haupt-nav" aria-label="Hauptbereiche">
+    <button type="button" data-screen="erfassen" aria-current="page">ERFASSEN</button>
+    <button type="button" data-screen="faden">FADEN</button>
+    <button type="button" data-screen="verwalten">VERWALTEN</button>
+  </nav>
+
+  <script src="app.js"></script>
+</body>
+</html>
