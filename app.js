@@ -518,24 +518,41 @@ async function renderFaden() {
   eintraege.forEach(function (eintrag) {
     const zeile = document.createElement('li');
 
+    const karte = document.createElement('div');
+    karte.className = 'eintrag-karte';
+
     const meta = document.createElement('p');
     meta.className = 'eintrag-meta';
-    meta.textContent = formatDatum(eintrag.datum) + ' · ' +
-      (KATEGORIE_NAMEN[eintrag.kategorie] || eintrag.kategorie) + ' · ' + eintrag.quelle;
+
+    const datum = document.createElement('span');
+    datum.className = 'eintrag-datum';
+    datum.textContent = formatDatum(eintrag.datum);
+
+    const kategorie = document.createElement('span');
+    kategorie.className = 'eintrag-kategorie';
+    kategorie.textContent = KATEGORIE_NAMEN[eintrag.kategorie] || eintrag.kategorie;
+
+    const quelle = document.createElement('span');
+    quelle.className = 'eintrag-quelle';
+    quelle.textContent = eintrag.quelle;
+
+    meta.appendChild(datum);
+    meta.appendChild(kategorie);
+    meta.appendChild(quelle);
 
     const text = document.createElement('p');
     text.className = 'eintrag-text';
     text.textContent = eintrag.text;
 
-    zeile.appendChild(meta);
-    zeile.appendChild(text);
+    karte.appendChild(meta);
+    karte.appendChild(text);
 
     const restTage = tageZwischen(heute, eintrag.loeschAm);
     if (restTage !== null && restTage < 7) {
       const frist = document.createElement('p');
       frist.className = 'frist-hinweis';
       frist.textContent = 'Frist läuft am ' + formatDatumKurz(eintrag.loeschAm) + ' ab.';
-      zeile.appendChild(frist);
+      karte.appendChild(frist);
 
       if (eintrag.kategorie !== 'vereinbarung') {
         const umwandeln = document.createElement('button');
@@ -545,10 +562,11 @@ async function renderFaden() {
         umwandeln.addEventListener('click', function () {
           wandleInVereinbarungUm(eintrag.id);
         });
-        zeile.appendChild(umwandeln);
+        karte.appendChild(umwandeln);
       }
     }
 
+    zeile.appendChild(karte);
     liste.appendChild(zeile);
   });
 }
@@ -869,6 +887,18 @@ async function renderFristen() {
 
 /* ---------- Verdrahtung und Start ---------- */
 
+function setzeErfassenDatum() {
+  const zeile = document.getElementById('erfassen-datum');
+  if (!zeile) return;
+  try {
+    zeile.textContent = new Date().toLocaleDateString('de-DE', {
+      weekday: 'long', day: 'numeric', month: 'long'
+    });
+  } catch (fehler) {
+    zeile.textContent = formatDatum(heuteIso());
+  }
+}
+
 function verdrahteOberflaeche() {
   document.querySelectorAll('.haupt-nav button').forEach(function (knopf) {
     knopf.addEventListener('click', function () {
@@ -955,6 +985,7 @@ async function start() {
     aufraeumFehler = fehler;
   }
 
+  setzeErfassenDatum();
   verdrahteOberflaeche();
   zeigeScreen('erfassen');
 

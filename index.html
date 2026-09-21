@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="AM PASS">
-  <meta name="theme-color" content="#faf9f7">
+  <meta name="theme-color" content="#f3ede3">
   <title>AM PASS</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -23,6 +23,8 @@
       <h2 id="titel-erfassen" class="sichtbar-versteckt">Erfassen</h2>
 
       <div id="personenwahl">
+        <p class="datum-zeile" id="erfassen-datum"></p>
+        <p class="unterzeile">Wen hast du im Dienst beobachtet?</p>
         <p class="hinweis" id="keine-personen" hidden>
           Noch keine aktiven Personen vorhanden. Lege unter VERWALTEN zuerst eine Person an.
         </p>
@@ -35,27 +37,29 @@
           <span id="gewaehlte-person" class="gewaehlte-person"></span>
         </div>
 
-        <fieldset class="feldgruppe">
-          <legend>Kategorie</legend>
-          <div id="kategorie-wahl" class="kategorie-raster">
-            <button type="button" data-kategorie="beobachtung" aria-pressed="false">Beobachtung</button>
-            <button type="button" data-kategorie="gespraech" aria-pressed="false">Gespräch</button>
-            <button type="button" data-kategorie="vereinbarung" aria-pressed="false">Vereinbarung</button>
-            <button type="button" data-kategorie="lob" aria-pressed="false">Lob</button>
-          </div>
-        </fieldset>
+        <div class="karte">
+          <fieldset class="feldgruppe">
+            <legend>Kategorie</legend>
+            <div id="kategorie-wahl" class="kategorie-raster">
+              <button type="button" data-kategorie="beobachtung" aria-pressed="false">Beobachtung</button>
+              <button type="button" data-kategorie="gespraech" aria-pressed="false">Gespräch</button>
+              <button type="button" data-kategorie="vereinbarung" aria-pressed="false">Vereinbarung</button>
+              <button type="button" data-kategorie="lob" aria-pressed="false">Lob</button>
+            </div>
+          </fieldset>
 
-        <fieldset class="feldgruppe">
-          <legend>Quelle</legend>
-          <div id="quelle-wahl" class="umschalter">
-            <button type="button" data-quelle="selbst gesehen" aria-pressed="true">selbst gesehen</button>
-            <button type="button" data-quelle="von Dritten berichtet" aria-pressed="false">von Dritten berichtet</button>
-          </div>
-        </fieldset>
+          <fieldset class="feldgruppe">
+            <legend>Quelle</legend>
+            <div id="quelle-wahl" class="umschalter">
+              <button type="button" data-quelle="selbst gesehen" aria-pressed="true">selbst gesehen</button>
+              <button type="button" data-quelle="von Dritten berichtet" aria-pressed="false">von Dritten berichtet</button>
+            </div>
+          </fieldset>
+        </div>
 
-        <div class="feldgruppe">
-          <label for="eintrag-text">Was war konkret zu sehen?</label>
-          <textarea id="eintrag-text" rows="4"
+        <div class="karte">
+          <label for="eintrag-text" class="frage">Was war konkret zu sehen?</label>
+          <textarea id="eintrag-text" rows="5"
             placeholder="Am 12.10. Station 3 allein übernommen, zwei Gänge sauber ausgeführt."></textarea>
         </div>
 
@@ -80,11 +84,12 @@
           <span id="faden-person" class="gewaehlte-person"></span>
         </div>
 
-        <p id="gespraechszeile" class="gespraechszeile"></p>
+        <div class="gespraech-banner">
+          <p id="gespraechszeile" class="gespraechszeile"></p>
+          <button type="button" id="knopf-gespraechsvorbereitung">Gesprächsvorbereitung</button>
+        </div>
 
-        <button type="button" id="knopf-gespraechsvorbereitung" class="knopf-breit">Gesprächsvorbereitung</button>
-
-        <div id="vorbereitung" hidden>
+        <div id="vorbereitung" class="karte" hidden>
           <label for="vorbereitung-text" class="sichtbar-versteckt">Gesprächsvorbereitung als Text</label>
           <textarea id="vorbereitung-text" readonly rows="12"></textarea>
           <div class="knopfzeile">
@@ -103,7 +108,7 @@
       <h2 id="titel-verwalten">Verwalten</h2>
 
       <h3>Person anlegen</h3>
-      <form id="person-form" novalidate>
+      <form id="person-form" class="karte" novalidate>
         <div class="feldgruppe">
           <label for="person-name">Vorname oder Kürzel</label>
           <input id="person-name" type="text" maxlength="20" autocomplete="off" autocapitalize="words">
@@ -117,11 +122,15 @@
       </form>
 
       <h3>Personen</h3>
-      <p class="hinweis" id="keine-personen-verwalten" hidden>Noch keine Personen angelegt.</p>
-      <ul id="personen-liste" class="verwaltungsliste"></ul>
+      <div class="karte">
+        <p class="hinweis" id="keine-personen-verwalten" hidden>Noch keine Personen angelegt.</p>
+        <ul id="personen-liste" class="verwaltungsliste"></ul>
+      </div>
 
       <h3>Fristen</h3>
-      <ul id="fristen-liste" class="fristenliste"></ul>
+      <div class="karte">
+        <ul id="fristen-liste" class="fristenliste"></ul>
+      </div>
 
       <h3>Alles löschen</h3>
       <p class="hinweis">Entfernt alle Personen und Einträge endgültig von diesem Gerät.</p>
